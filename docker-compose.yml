@@ -1,0 +1,109 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: ./build/app
+      dockerfile: Dockerfile
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: spotweb-app
+    depends_on:
+      - mailpit
+      - mariadb
+    restart: on-failure
+    user: ${UID:-1000}:${GID:-1000}
+    networks:
+      - bridge
+    volumes:
+      - ./src:/src:rw,z,U
+    x-podman:
+      uidmaps:
+        - "0:1:1"
+        - "${UID:-1000}:0:1"
+      gidmaps:
+        - "0:1:1"
+        - "${GID:-1000}:0:1"
+  nginx:
+    build:
+      context: ./build/nginx
+      dockerfile: Dockerfile
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: spotweb-nginx
+    depends_on:
+      - app
+    restart: on-failure
+    user: ${UID:-1000}:${GID:-1000}
+    working_dir: /src
+    networks:
+      - bridge
+    ports:
+      - 81:8080
+      - 444:4443
+    volumes:
+      - ./ssl:/ssl:ro,Z
+      - ./src:/src:ro,z
+    secrets:
+      - source: ssl-cert
+        target: cert.pem
+        mode: 440
+      - source: ssl-key
+        target: key.pem
+        mode: 440
+      - source: ssl-dhparam
+        target: dhparam.pem
+        mode: 440
+    x-podman:
+      uidmaps:
+        - "0:1:1"
+        - "${UID:-1000}:0:1"
+      gidmaps:
+        - "0:1:1"
+        - "${GID:-1000}:0:1"
+  mariadb:
+    image: mariadb:latest
+    container_name: spotweb-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USER}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_TCP_PORT: 3307
+    restart: on-failure
+    networks:
+      - bridge
+    ports:
+      - 3307:3307
+    volumes:
+      - mariadb:/var/lib/mysql:rw,Z
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
+      retries: 3
+      timeout: 5s
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: spotweb-mailpit
+    restart: on-failure
+    networks:
+      - bridge
+    ports:
+      - 1026:1025
+      - 8026:8025
+secrets:
+  ssl-cert:
+    file: ./ssl/cert.pem
+  ssl-key:
+    file: ./ssl/key.pem
+  ssl-dhparam:
+    file: ./ssl/dhparam.pem
+
+volumes:
+  mariadb:
+    name: spotweb-mariadb
+networks:
+  bridge:
+    driver: bridge
