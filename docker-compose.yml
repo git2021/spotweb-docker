@@ -100,7 +100,6 @@ secrets:
     file: ./ssl/key.pem
   ssl-dhparam:
     file: ./ssl/dhparam.pem
-
 volumes:
   mariadb:
     name: spotweb-mariadb
