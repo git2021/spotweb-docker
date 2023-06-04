@@ -1,4 +1,4 @@
-FROM php:8.2.4-fpm-alpine
+FROM php:8.2.6-fpm-alpine
 
 ARG UID=1000
 ARG GID=$UID
@@ -39,7 +39,7 @@ RUN apk add --no-cache --virtual .run-deps \
     zlib \
     sqlite \
     libcap \
-    mysql-client \
+    mariadb-client \
     nodejs \
     npm \
     ffmpeg \
@@ -49,6 +49,12 @@ RUN apk add --no-cache --virtual .run-deps \
     gifsicle
 
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/error_reporting = .*/error_reporting = E_ALL/" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/display_errors = .*/display_errors = On/" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/memory_limit = .*/memory_limit = 512M/" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/upload_max_filesize = .*/upload_max_filesize = 100M/" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/post_max_size = .*/post_max_size = 100M/" "$PHP_INI_DIR/php.ini" \
+    && sed -i "s/;date.timezone.*/date.timezone = UTC/" "$PHP_INI_DIR/php.ini" \
     && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer \
     && docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) gd \
