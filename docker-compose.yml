@@ -80,10 +80,6 @@ services:
       - 3307:3307
     volumes:
       - mariadb:/var/lib/mysql:rw,Z
-    healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
-      retries: 3
-      timeout: 5s
   mailpit:
     image: axllent/mailpit:latest
     container_name: spotweb-mailpit
